@@ -157,6 +157,30 @@ export interface Database {
           updated_at?: string;
         };
       };
+      user_goals: {
+        Relationships: [];
+        Row: {
+          id: string;
+          user_id: string;
+          internal_id: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          internal_id: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          internal_id?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+      };
       strategies: {
         Relationships: [];
         Row: {
@@ -191,6 +215,51 @@ export interface Database {
           upvotes?: number;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      roadmap_skills: {
+        Relationships: [];
+        Row: {
+          id: string;
+          display_name: string;
+          sort_order: number;
+          color: string | null;
+        };
+        Insert: {
+          id: string;
+          display_name: string;
+          sort_order: number;
+          color?: string | null;
+        };
+        Update: {
+          id?: string;
+          display_name?: string;
+          sort_order?: number;
+          color?: string | null;
+        };
+      };
+      roadmap_items: {
+        Relationships: [];
+        Row: {
+          internal_id: string;
+          skill_id: string;
+          layer: number;
+          sort_order: number;
+          label_override: string | null;
+        };
+        Insert: {
+          internal_id: string;
+          skill_id: string;
+          layer: number;
+          sort_order?: number;
+          label_override?: string | null;
+        };
+        Update: {
+          internal_id?: string;
+          skill_id?: string;
+          layer?: number;
+          sort_order?: number;
+          label_override?: string | null;
         };
       };
     };
@@ -234,7 +303,10 @@ export type Item = Database["public"]["Tables"]["items"]["Row"];
 export type Recipe = Database["public"]["Tables"]["recipes"]["Row"];
 export type RecipeIngredient = Database["public"]["Tables"]["recipe_ingredients"]["Row"];
 export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
+export type UserGoal = Database["public"]["Tables"]["user_goals"]["Row"];
 export type Strategy = Database["public"]["Tables"]["strategies"]["Row"];
+export type RoadmapSkill = Database["public"]["Tables"]["roadmap_skills"]["Row"];
+export type RoadmapItemRow = Database["public"]["Tables"]["roadmap_items"]["Row"];
 
 export type DependencyNode = Database["public"]["Functions"]["get_dependency_tree"]["Returns"][number];
 export type DependencySubgraphRow =

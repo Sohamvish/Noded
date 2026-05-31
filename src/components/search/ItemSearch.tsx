@@ -8,39 +8,26 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import type { ItemSearchApiResponse, ItemSearchResult } from "@/lib/graph/types";
-import { useGraphStore } from "@/stores/graph-store";
+import type { ItemSearchApiResponse, ItemSearchResult } from "@/lib/items/types";
+import { tierBadgeClass } from "@/lib/items/tier-styles";
 
 const DEBOUNCE_MS = 280;
 const MIN_QUERY_LENGTH = 2;
 
-function tierBadgeClass(tier: string | null): string {
-  switch (tier) {
-    case "LEGENDARY":
-      return "text-amber-400";
-    case "EPIC":
-      return "text-violet-400";
-    case "RARE":
-      return "text-sky-400";
-    case "UNCOMMON":
-      return "text-emerald-400";
-    default:
-      return "text-zinc-500";
-  }
-}
-
 export interface ItemSearchProps {
   className?: string;
+  onSelect?: (item: ItemSearchResult) => void;
+  onPinGoal?: (item: ItemSearchResult) => void;
 }
 
-export function ItemSearch({ className }: ItemSearchProps) {
+export function ItemSearch({
+  className,
+  onSelect,
+  onPinGoal,
+}: ItemSearchProps) {
   const listboxId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  const setTarget = useGraphStore((s) => s.setTarget);
-  const targetInternalId = useGraphStore((s) => s.targetInternalId);
-  const isGraphLoading = useGraphStore((s) => s.isLoading);
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ItemSearchResult[]>([]);
@@ -48,7 +35,6 @@ export function ItemSearch({ className }: ItemSearchProps) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
 
   const showDropdown =
     isOpen && query.trim().length >= MIN_QUERY_LENGTH && !isSearching;
@@ -56,13 +42,12 @@ export function ItemSearch({ className }: ItemSearchProps) {
   const selectItem = useCallback(
     (item: ItemSearchResult) => {
       setQuery(item.displayName);
-      setSelectedLabel(item.displayName);
       setIsOpen(false);
       setResults([]);
       setSearchError(null);
-      void setTarget(item.internalId);
+      onSelect?.(item);
     },
-    [setTarget],
+    [onSelect],
   );
 
   useEffect(() => {
@@ -159,64 +144,77 @@ export function ItemSearch({ className }: ItemSearchProps) {
         aria-controls={listboxId}
         aria-autocomplete="list"
         autoComplete="off"
-        placeholder="Search goal item (e.g. Hyperion)"
+        placeholder="Search item to view or pin (e.g. Hyperion)"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
-          setSelectedLabel(null);
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={onKeyDown}
-        className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-amber-500/70 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+        className="sc-input"
       />
-
-      {targetInternalId && selectedLabel ? (
-        <p className="mt-1 font-mono text-[10px] text-zinc-500">
-          Target: {targetInternalId}
-          {isGraphLoading ? " · loading tree…" : ""}
-        </p>
-      ) : null}
 
       {isOpen && query.trim().length >= MIN_QUERY_LENGTH ? (
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+          className="nd-glass-card absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-2xl py-1 shadow-xl"
         >
           {isSearching ? (
-            <li className="px-3 py-2 text-sm text-zinc-500">Searching…</li>
+            <li className="px-3 py-2 text-sm text-white/50">Searching…</li>
           ) : null}
           {searchError ? (
             <li className="px-3 py-2 text-sm text-red-400">{searchError}</li>
           ) : null}
           {!isSearching && !searchError && results.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-zinc-500">No items found</li>
+            <li className="px-3 py-2 text-sm text-white/50">No items found</li>
           ) : null}
           {showDropdown
             ? results.map((item, index) => (
-                <li key={item.internalId} role="option" aria-selected={index === highlightIndex}>
-                  <button
-                    type="button"
-                    className={[
-                      "flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm transition-colors",
-                      index === highlightIndex
-                        ? "bg-amber-500/15 text-zinc-100"
-                        : "text-zinc-300 hover:bg-zinc-800",
-                    ].join(" ")}
-                    onMouseEnter={() => setHighlightIndex(index)}
-                    onClick={() => selectItem(item)}
-                  >
-                    <span className="font-medium">{item.displayName}</span>
-                    <span className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
-                      {item.internalId}
-                      {item.tier ? (
-                        <span className={tierBadgeClass(item.tier)}>
-                          {item.tier}
-                        </span>
-                      ) : null}
-                    </span>
-                  </button>
+                <li
+                  key={item.internalId}
+                  role="option"
+                  aria-selected={index === highlightIndex}
+                  className={[
+                    index === highlightIndex ? "bg-sc-icon/10" : "",
+                  ].join(" ")}
+                >
+                  <div className="flex items-stretch">
+                    <button
+                      type="button"
+                      className={[
+                        "flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2 text-left text-sm transition-colors",
+                        index === highlightIndex
+                          ? "text-white"
+                          : "text-white/80 hover:bg-white/5",
+                      ].join(" ")}
+                      onMouseEnter={() => setHighlightIndex(index)}
+                      onClick={() => selectItem(item)}
+                    >
+                      <span className="font-medium">{item.displayName}</span>
+                      <span className="flex items-center gap-2 font-mono text-[10px] text-white/40">
+                        {item.internalId}
+                        {item.tier ? (
+                          <span className={tierBadgeClass(item.tier)}>
+                            {item.tier}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                    {onPinGoal ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onPinGoal(item);
+                          setIsOpen(false);
+                        }}
+                        className="shrink-0 border-l border-white/10 px-3 py-2 text-xs text-sc-link hover:bg-white/5 hover:text-sc-hover"
+                      >
+                        Pin as goal
+                      </button>
+                    ) : null}
+                  </div>
                 </li>
               ))
             : null}

@@ -104,6 +104,40 @@ CREATE TABLE strategies (
 );
 
 -- -----------------------------------------------------------------------------
+-- Table: roadmap_skills / roadmap_items (curated browse taxonomy)
+-- Milestones use explicit skill + layer; other items are inferred at runtime.
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE roadmap_skills (
+  id           TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  sort_order   INT NOT NULL,
+  color        TEXT
+);
+
+CREATE TABLE roadmap_items (
+  internal_id    TEXT PRIMARY KEY REFERENCES items(internal_id) ON DELETE CASCADE,
+  skill_id       TEXT NOT NULL REFERENCES roadmap_skills(id) ON DELETE CASCADE,
+  layer          INT NOT NULL CHECK (layer BETWEEN 1 AND 5),
+  sort_order     INT NOT NULL DEFAULT 0,
+  label_override TEXT
+);
+
+-- -----------------------------------------------------------------------------
+-- Table: user_goals
+-- Pinned end-goal items per user (max 3 enforced in API).
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE user_goals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  internal_id TEXT NOT NULL REFERENCES items(internal_id) ON DELETE CASCADE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, internal_id)
+);
+
+-- -----------------------------------------------------------------------------
 -- Indexes for DAG traversal and lookups
 -- -----------------------------------------------------------------------------
 
@@ -115,6 +149,8 @@ CREATE INDEX idx_ingredients_recipe  ON recipe_ingredients(recipe_id);
 CREATE INDEX idx_ingredients_item    ON recipe_ingredients(ingredient_item_id);
 CREATE INDEX idx_strategies_item     ON strategies(item_internal_id);
 CREATE INDEX idx_user_profiles_mc    ON user_profiles(minecraft_uuid);
+CREATE INDEX idx_roadmap_items_skill_layer ON roadmap_items(skill_id, layer, sort_order);
+CREATE INDEX idx_user_goals_user ON user_goals(user_id, sort_order);
 
 -- -----------------------------------------------------------------------------
 -- Row Level Security
@@ -164,6 +200,31 @@ CREATE POLICY "Authors update strategies"
 CREATE POLICY "Authors delete strategies"
   ON strategies FOR DELETE
   USING (auth.uid() = author_id);
+
+-- Roadmap: public read, service-role write (seed script / admin)
+ALTER TABLE roadmap_skills ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read roadmap_skills"
+  ON roadmap_skills FOR SELECT
+  USING (true);
+
+ALTER TABLE roadmap_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read roadmap_items"
+  ON roadmap_items FOR SELECT
+  USING (true);
+
+ALTER TABLE user_goals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users read own goals"
+  ON user_goals FOR SELECT
+  USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own goals"
+  ON user_goals FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own goals"
+  ON user_goals FOR UPDATE
+  USING (auth.uid() = user_id);
+CREATE POLICY "Users delete own goals"
+  ON user_goals FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- -----------------------------------------------------------------------------
 -- Helper: auto-update updated_at timestamp
@@ -249,3 +310,28 @@ BEGIN
   ORDER BY dep_tree.item_id, dep_tree.depth;
 END;
 $$ LANGUAGE plpgsql;
+
+-- -----------------------------------------------------------------------------
+-- Auth: bootstrap user_profiles on signup (see migrations/003_user_profile_on_signup.sql)
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id)
+  VALUES (NEW.id)
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();

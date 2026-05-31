@@ -3,21 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ingest": "tsx --tsconfig tsconfig.scripts.json scripts/ingest_neu.ts"
+    "ingest": "tsx --tsconfig tsconfig.scripts.json scripts/ingest_neu.ts",
+    "seed:roadmap": "tsx --tsconfig tsconfig.scripts.json scripts/seed_roadmap.ts",
+    "test:hypixel": "tsx --test src/lib/hypixel/parse-inventory.test.ts"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^3.0.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@swc/helpers": "^0.5.23",
-    "@xyflow/react": "^12.10.2",
     "next": "16.2.6",
+    "prismarine-nbt": "^2.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "supabase": "^2.102.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

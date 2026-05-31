@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { escapePostgrestFilter, parsePositiveInt } from "@/lib/api/query";
 import { createClient } from "@/lib/supabase/server";
-import type { ItemSearchApiResponse, ItemSearchResult } from "@/lib/graph/types";
+import type { ItemSearchApiResponse, ItemSearchResult } from "@/lib/items/types";
 
 function rankResults(query: string, items: ItemSearchResult[]): ItemSearchResult[] {
   const q = query.toLowerCase();

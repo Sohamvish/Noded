@@ -8,6 +8,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: path.join(projectRoot, ".env.local") });
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["prismarine-nbt", "protodef"],
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
